@@ -1,16 +1,12 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
-namespace ConsoleApplication1
+namespace GenAnkiData
 {
-    struct importStruct
+    struct ImportStruct
     {
-        public string clipping;
-        public string note;
-        public string chapter;
+        public string Clipping;
+        public string Note;
+        public string Chapter;
     }
-    
+
     internal class Program
     {
         public static void Main(string[] args)
@@ -22,29 +18,30 @@ namespace ConsoleApplication1
             string authorName = "";
             string currentChapter = "";
             string currentNote = "";
-            Dictionary<string, importStruct> linesData = new Dictionary<string, importStruct>();
+            Dictionary<string, ImportStruct> linesData = new Dictionary<string, ImportStruct>();
             foreach (var file in fileinfos)
             {
-                using (StreamReader sr = file.OpenText())
+                using (StreamReader streamReader = file.OpenText())
                 {
                     string s;
-                    int line = 0;
-                    while ((s = sr.ReadLine()) != null)
+                    int lineIndex = 0;
+                    while ((s = streamReader.ReadLine()) != null)
                     {
-                        line++;
-                        if (line == 1)
+                        lineIndex++;
+                        if (lineIndex == 1)
                         {
                             bookName = s;
                         }
-                        else if (line == 2)
+                        else if (lineIndex == 2)
                         {
                             authorName = s;
                         }
-                        else if (s.StartsWith("◆"))
+                        else if (s.StartsWith("◆")) //新章节
                         {
                             currentChapter = s;
                         }
-                        else if (s.StartsWith(">>") is bool condition1 && condition1 || s.StartsWith(">"))
+                        //这里必须要这么写？ s.StartsWith(">>") is bool condition1 || s.StartsWith(">") 会永远进入判断
+                        else if (s.StartsWith(">>") is bool condition1 && condition1 || s.StartsWith(">")) //句子
                         {
                             if (condition1)
                             {
@@ -56,20 +53,24 @@ namespace ConsoleApplication1
                             }
 
                             s = s.Trim();
-                            if (!linesData.ContainsKey(s))
+                            if (linesData.TryGetValue(s, out  ImportStruct data))
                             {
-                                importStruct @struct;
-                                @struct.clipping = s;
-                                @struct.note = currentNote;
-                                @struct.chapter = currentChapter;
-                                linesData.Add(s, @struct);
+                                data.Note = data.Note + "\n" + currentNote;
+                            }
+                            else
+                            {
+                                ImportStruct value;
+                                value.Clipping = s;
+                                value.Note = currentNote;
+                                value.Chapter = currentChapter;
+                                linesData.Add(s, value);
                                 if (!string.IsNullOrEmpty(currentNote))
                                 {
                                     currentNote = "";
                                 }
                             }
                         }
-                        else if (line > 3)
+                        else if (lineIndex > 3)
                         {
                             currentNote = s;
                         }
@@ -78,8 +79,9 @@ namespace ConsoleApplication1
             }
 
             File.WriteAllText($"{path}/result.txt",
-                string.Join("\n", linesData.ToList().Select(data => 
-                    string.Join(",", data.Value.clipping, data.Value.note, bookName + " " + data.Value.chapter, authorName, bookName
+                string.Join("\n", linesData.ToList().Select(data =>
+                    string.Join(",", data.Value.Clipping, data.Value.Note, bookName + " " + data.Value.Chapter,
+                        authorName, bookName
                     )).ToList()));
         }
     }
